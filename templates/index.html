@@ -1,0 +1,892 @@
+<!--
+index.html - Main SPA for Sortify visual sorting visualizer
+Features:
+- Modern UI with space/night and cherry blossom/day themes
+- SPA navigation (Home, Details)
+- Sorting visualizer for Bubble, Merge, Quick, Insertion, Selection
+- Animated backgrounds and interactive cherry blossom petals
+- Live stats and speed control
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sortify | Visual Sorting Simulator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&family=Roboto:wght@400;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-main: linear-gradient(135deg, #0a0a1a 0%, #1a237e 100%);
+            --bg-card: rgba(20, 24, 60, 0.7);
+            --text-main: #fff;
+            --text-secondary: #b3cfff;
+            --accent: #64b5f6;
+            --bar-main: linear-gradient(180deg, #64b5f6 0%, #1a237e 100%);
+            --bar-compare: linear-gradient(180deg, #ffa726 0%, #ff7043 100%);
+            --bar-sorted: linear-gradient(180deg, #66bb6a 0%, #388e3c 100%);
+            --shadow: 0 8px 32px rgba(26,35,126,0.18);
+            --nav-bg: rgba(10, 10, 30, 0.85);
+            --nav-accent: #fff;
+        }
+        body.day-mode {
+            --bg-main: linear-gradient(135deg, #ffe6f7 0%, #b3e0ff 100%);
+            --bg-card: rgba(255,255,255,0.92);
+            --text-main: #d81b60;
+            --text-secondary: #7b1fa2;
+            --accent: #ffb6c1;
+            --bar-main: linear-gradient(180deg, #ffb6c1 0%, #b3e0ff 100%);
+            --bar-compare: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%);
+            --bar-sorted: linear-gradient(180deg, #81c784 0%, #388e3c 100%);
+            --shadow: 0 8px 32px rgba(255,182,193,0.12);
+            --nav-bg: rgba(255, 255, 255, 0.85);
+            --nav-accent: #d81b60;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            background: var(--bg-main);
+            color: var(--text-main);
+            min-height: 100vh;
+            overflow-x: hidden;
+            transition: background 0.7s;
+        }
+        .bg-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+        .nav {
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            background: var(--nav-bg);
+            color: var(--nav-accent);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+            font-family: 'Orbitron', 'Roboto', Arial, sans-serif;
+            transition: background 0.7s, color 0.7s;
+            min-width: 0;
+        }
+        .nav .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 2rem;
+            font-weight: 900;
+            min-width: 0;
+        }
+        .nav .nav-logo .nav-icon {
+            font-size: 2.2rem;
+        }
+        .nav .nav-links {
+            display: flex;
+            gap: 32px;
+            min-width: 0;
+            flex: 1;
+            flex-wrap: wrap;
+            overflow-x: auto;
+            max-width: 100%;
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .nav .nav-link {
+            font-size: 1.1rem;
+            color: var(--nav-accent);
+            text-decoration: none;
+            font-weight: 700;
+            padding: 8px 18px;
+            border-radius: 18px;
+            transition: background 0.2s, color 0.2s;
+            cursor: pointer;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            min-width: 0;
+        }
+        .nav .nav-link.active, .nav .nav-link:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+        .theme-toggle {
+            font-size: 1.7rem;
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            margin-left: 18px;
+            transition: color 0.3s;
+        }
+        .theme-toggle:hover {
+            color: #ffd54f;
+        }
+        .main-section {
+            display: none;
+            animation: fadeIn 0.7s;
+        }
+        .main-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0px;
+            padding: 48px 0 24px 0;
+            background: transparent;
+        }
+        .logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.7rem;
+            margin-bottom: 0.2rem;
+        }
+        .logo-icon {
+            width: 90px;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent) 0%, #1a237e 100%);
+            box-shadow: 0 4px 32px rgba(100,181,246,0.18);
+            font-size: 3.2rem;
+            color: #fff;
+            position: relative;
+            animation: orbit 3.5s infinite linear;
+            margin-bottom: 0.2rem;
+        }
+        @keyframes orbit {
+            0% { box-shadow: 0 4px 32px 0 rgba(100,181,246,0.18), 0 0 0 0 var(--accent); }
+            50% { box-shadow: 0 4px 32px 0 rgba(100,181,246,0.18), 0 0 16px 4px var(--accent); }
+            100% { box-shadow: 0 4px 32px 0 rgba(100,181,246,0.18), 0 0 0 0 var(--accent); }
+        }
+        .title {
+            font-family: 'Space Grotesk', 'Orbitron', 'Roboto', Arial, sans-serif;
+            font-size: 3.6rem;
+            font-weight: 700;
+            letter-spacing: 2.5px;
+            line-height: 1.08;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(90deg, #64b5f6 10%, #fff 90%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+            text-shadow: 0 2px 8px rgba(26,35,126,0.10), 0 1px 0 #fff, 0 0 2px #64b5f644;
+            filter: drop-shadow(0 2px 8px rgba(26,35,126,0.10));
+            text-align: center;
+        }
+        body.day-mode .title {
+            font-size: 4.1rem;
+            font-weight: 900;
+            background: linear-gradient(90deg, #7b1fa2 10%, #d81b60 90%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+            text-shadow: 0 2px 8px #fff, 0 1px 0 #7b1fa2, 0 0 2px #d81b60cc;
+            filter: drop-shadow(0 2px 8px #fff);
+        }
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1.18rem;
+            margin-bottom: 30px;
+            margin-top: 10px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+        .container {
+            width: 95vw;
+            max-width: 1300px;
+            min-width: 320px;
+            margin: 0 auto;
+            padding: 30px 2vw 20px 2vw;
+            position: relative;
+            z-index: 1;
+            background: var(--bg-card);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            transition: background 0.7s;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 18px;
+            margin-bottom: 30px;
+        }
+        .control-btn {
+            padding: 14px 32px;
+            font-size: 1.15rem;
+            font-family: 'Orbitron', Arial, sans-serif;
+            background: linear-gradient(90deg, var(--accent) 0%, #283593 100%);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(100,181,246,0.15);
+            transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            position: relative;
+        }
+        .control-btn:hover {
+            background: linear-gradient(90deg, #64b5f6 0%, #283593 100%);
+            transform: translateY(-2px) scale(1.04);
+            box-shadow: 0 8px 32px rgba(100,181,246,0.25);
+        }
+        .visualization {
+            background: rgba(26, 35, 126, 0.25);
+            border-radius: 16px;
+            padding: 30px 10px 10px 10px;
+            margin-bottom: 30px;
+            height: 400px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(26,35,126,0.15);
+            transition: background 0.7s;
+        }
+        .bar {
+            position: absolute;
+            bottom: 0;
+            background: var(--bar-main);
+            transition: all 0.2s cubic-bezier(.4,2,.6,1);
+            border-radius: 3px 3px 0 0;
+        }
+        .bar.comparing {
+            background: var(--bar-compare);
+            box-shadow: 0 0 16px #ffa72699;
+        }
+        .bar.sorted {
+            background: var(--bar-sorted);
+            box-shadow: 0 0 16px #66bb6a99;
+        }
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: rgba(26, 35, 126, 0.25);
+            padding: 18px 30px;
+            border-radius: 10px;
+            text-align: center;
+            min-width: 160px;
+            box-shadow: 0 2px 8px rgba(100,181,246,0.08);
+        }
+        .stat-value {
+            font-size: 2rem;
+            color: var(--accent);
+            margin: 10px 0;
+            font-family: 'Orbitron', Arial, sans-serif;
+        }
+        body.day-mode .stat-value {
+            font-size: 2.2rem;
+            color: #7b1fa2;
+            font-weight: 900;
+            text-shadow: 0 2px 8px #fff, 0 1px 0 #d81b60, 0 0 2px #7b1fa2cc;
+        }
+        .footer {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            padding: 30px 0 10px 0;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+        .step-label {
+            text-align: center;
+            font-family: 'Orbitron', Arial, sans-serif;
+            font-size: 1.2rem;
+            color: var(--accent);
+            margin-top: 10px;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .speed-control label {
+            margin-right: 10px;
+            color: var(--text-secondary);
+        }
+        .speed-control input {
+            width: 180px;
+        }
+        /* Details page styles */
+        .details-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 32px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        .algo-card {
+            background: var(--bg-card);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            padding: 32px 24px;
+            min-width: 260px;
+            max-width: 320px;
+            text-align: center;
+            transition: background 0.7s, box-shadow 0.7s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 18px;
+            animation: fadeIn 0.7s;
+        }
+        .algo-card .algo-icon {
+            font-size: 2.5rem;
+            margin-bottom: 8px;
+        }
+        .algo-card .algo-title {
+            font-family: 'Orbitron', Arial, sans-serif;
+            font-size: 1.3rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .algo-card .algo-desc {
+            color: var(--text-main);
+            font-size: 1.05rem;
+        }
+        /* SVG Cherry Blossom Trees for Day Mode */
+        .cherry-svg-tree {
+            position: fixed;
+            bottom: 0;
+            width: 140px;
+            max-width: 20vw;
+            z-index: 1;
+            opacity: 0.92;
+            pointer-events: none;
+            left: 2vw;
+            transition: opacity 0.7s;
+            display: none;
+        }
+        .cherry-svg-tree.right {
+            left: auto;
+            right: 2vw;
+            transform: scaleX(-1);
+        }
+        body.day-mode .cherry-svg-tree {
+            display: block !important;
+        }
+        .petal-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .petal {
+            position: absolute;
+            width: 38px;
+            height: 32px;
+            pointer-events: none;
+            opacity: 0.8;
+            will-change: transform;
+        }
+        body.day-mode .petal-container {
+            display: block;
+        }
+        .petal-container {
+            display: none;
+        }
+        @media (max-width: 1100px) {
+            .container { max-width: 98vw; }
+        }
+        @media (max-width: 900px) {
+            .container { max-width: 99vw; }
+            .nav { padding: 0 10px; }
+            .nav .nav-links { gap: 8px; max-width: 90vw; }
+            .nav .nav-link { font-size: 1rem; padding: 6px 10px; max-width: 80px; }
+        }
+        @media (max-width: 700px) {
+            .header { flex-direction: column; gap: 0px; padding: 24px 0 12px 0; }
+            .logo { gap: 0.3rem; }
+            .logo-icon { width: 48px; height: 48px; font-size: 1.5rem; }
+            .title { font-size: 1.3rem; letter-spacing: 1.2px; }
+            .visualization { height: 250px; }
+            .stat-card { min-width: 100px; padding: 10px 8px; }
+            .container { padding: 10px 2vw; min-width: 0; }
+            .algo-card { min-width: 90vw; max-width: 98vw; }
+            .cherry-svg-tree { width: 90px; }
+            .nav { padding: 0 2vw; }
+            .nav .nav-links { gap: 4px; max-width: 98vw; }
+            .nav .nav-link { font-size: 0.95rem; padding: 4px 6px; max-width: 60px; }
+        }
+    </style>
+</head>
+<body>
+    <canvas class="bg-canvas" id="bgCanvas"></canvas>
+    <div class="petal-container" id="petalContainer"></div>
+    <nav class="nav">
+        <div class="nav-logo">
+            <span class="nav-icon" id="navIcon"><i class="fas fa-rocket"></i></span>
+            <span>Sortify</span>
+        </div>
+        <div class="nav-links">
+            <span class="nav-link active" id="navHome">Home</span>
+            <span class="nav-link" id="navDetails">Details</span>
+            <button class="theme-toggle" id="themeToggle" title="Toggle day/night mode" style="position:fixed;bottom:32px;right:32px;z-index:1000;width:56px;height:56px;border-radius:50%;box-shadow:0 4px 16px rgba(0,0,0,0.18);background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;transition:background 0.3s, color 0.3s;">
+                <i class="fas fa-moon"></i>
+            </button>
+        </div>
+    </nav>
+    <section class="main-section active" id="sectionHome">
+        <div class="header">
+            <div class="logo">
+                <span class="logo-icon" id="mainLogo"><i class="fas fa-rocket"></i></span>
+                <span class="title">Sortify</span>
+            </div>
+            <div class="subtitle">A Modern Sorting Visualizer made by Jen</div>
+        </div>
+        <div class="container">
+            <div class="controls">
+                <button class="control-btn" onclick="generateNewArray()">
+                    <i class="fas fa-random"></i> New Data
+                </button>
+                <button class="control-btn" onclick="startSorting('bubble')">
+                    <i class="fas fa-circle-dot"></i> Bubble Sort
+                </button>
+                <button class="control-btn" onclick="startSorting('merge')">
+                    <i class="fas fa-layer-group"></i> Merge Sort
+                </button>
+                <button class="control-btn" onclick="startSorting('quick')">
+                    <i class="fas fa-bolt"></i> Quick Sort
+                </button>
+                <button class="control-btn" onclick="startSorting('insertion')">
+                    <i class="fas fa-arrow-down"></i> Insertion Sort
+                </button>
+                <button class="control-btn" onclick="startSorting('selection')">
+                    <i class="fas fa-mouse-pointer"></i> Selection Sort
+                </button>
+            </div>
+            <div class="visualization" id="visualization"></div>
+            <div class="step-label" id="stepLabel">Step: 0</div>
+            <div class="speed-control">
+                <label for="speedSlider">Speed:</label>
+                <input type="range" id="speedSlider" min="1" max="100" value="30" />
+            </div>
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Comparisons</h3>
+                    <div class="stat-value" id="comparisons">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Swaps</h3>
+                    <div class="stat-value" id="swaps">0</div>
+                </div>
+                <div class="stat-card">
+                    <h3>Time</h3>
+                    <div class="stat-value" id="time">0.00s</div>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <i class="fas fa-rocket"></i> Built for the cosmos &amp; code. &copy; 2024 Sortify
+        </div>
+    </section>
+    <section class="main-section" id="sectionDetails">
+        <div class="header">
+            <div class="logo">
+                <span class="logo-icon" id="detailsLogo"><i class="fas fa-book"></i></span>
+                <span class="title">Algorithm Details</span>
+            </div>
+            <div class="subtitle">Learn about each sorting algorithm</div>
+        </div>
+        <div class="container">
+            <div class="details-list">
+                <div class="algo-card">
+                    <span class="algo-icon"><i class="fas fa-circle-dot"></i></span>
+                    <div class="algo-title">Bubble Sort</div>
+                    <div class="algo-desc">Bubble Sort: Repeatedly steps through the list, compares adjacent elements and swaps them if they are in the wrong order. Simple but not efficient for large lists.</div>
+                </div>
+                <div class="algo-card">
+                    <span class="algo-icon"><i class="fas fa-layer-group"></i></span>
+                    <div class="algo-title">Merge Sort</div>
+                    <div class="algo-desc">Merge Sort: A divide-and-conquer algorithm that splits the list into halves, sorts each half, and merges them back together. Very efficient for large lists.</div>
+                </div>
+                <div class="algo-card">
+                    <span class="algo-icon"><i class="fas fa-bolt"></i></span>
+                    <div class="algo-title">Quick Sort</div>
+                    <div class="algo-desc">Quick Sort: Picks a pivot, partitions the array around the pivot, and recursively sorts the partitions. Fast and widely used.</div>
+                </div>
+                <div class="algo-card">
+                    <span class="algo-icon"><i class="fas fa-arrow-down"></i></span>
+                    <div class="algo-title">Insertion Sort</div>
+                    <div class="algo-desc">Insertion Sort: Builds the sorted array one item at a time by comparing and inserting elements into their correct position. Good for small or nearly sorted lists.</div>
+                </div>
+                <div class="algo-card">
+                    <span class="algo-icon"><i class="fas fa-mouse-pointer"></i></span>
+                    <div class="algo-title">Selection Sort</div>
+                    <div class="algo-desc">Selection Sort: Repeatedly finds the minimum element from the unsorted part and puts it at the beginning. Simple but not efficient for large lists.</div>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <i class="fas fa-book"></i> Learn and explore. &copy; 2024 Sortify
+        </div>
+    </section>
+    <audio id="swapSound" src="https://cdn.pixabay.com/audio/2022/10/16/audio_12b6fae7b2.mp3"></audio>
+    <audio id="compareSound" src="https://cdn.pixabay.com/audio/2022/10/16/audio_12b6fae7b2.mp3"></audio>
+    <script>
+        // SPA navigation
+        const navHome = document.getElementById('navHome');
+        const navDetails = document.getElementById('navDetails');
+        const sectionHome = document.getElementById('sectionHome');
+        const sectionDetails = document.getElementById('sectionDetails');
+        navHome.onclick = function() {
+            navHome.classList.add('active');
+            navDetails.classList.remove('active');
+            sectionHome.classList.add('active');
+            sectionDetails.classList.remove('active');
+        };
+        navDetails.onclick = function() {
+            navDetails.classList.add('active');
+            navHome.classList.remove('active');
+            sectionDetails.classList.add('active');
+            sectionHome.classList.remove('active');
+        };
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const body = document.body;
+        let dayMode = false;
+        themeToggle.onclick = function() {
+            dayMode = !dayMode;
+            if (dayMode) {
+                body.classList.add('day-mode');
+                themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                document.getElementById('navIcon').innerHTML = '<i class="fas fa-seedling"></i>';
+                document.getElementById('mainLogo').innerHTML = '<i class="fas fa-seedling"></i>';
+                document.getElementById('detailsLogo').innerHTML = '<i class="fas fa-book"></i>';
+                document.getElementById('petalContainer').style.display = '';
+                startPetalAnimation();
+            } else {
+                body.classList.remove('day-mode');
+                themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                document.getElementById('navIcon').innerHTML = '<i class="fas fa-rocket"></i>';
+                document.getElementById('mainLogo').innerHTML = '<i class="fas fa-rocket"></i>';
+                document.getElementById('detailsLogo').innerHTML = '<i class="fas fa-book"></i>';
+                document.getElementById('petalContainer').style.display = 'none';
+                stopPetalAnimation();
+            }
+        };
+        // Animated background: stars (night) and cherry blossoms (day)
+        const bgCanvas = document.getElementById('bgCanvas');
+        const ctx = bgCanvas.getContext('2d');
+        function resizeCanvas() {
+            bgCanvas.width = window.innerWidth;
+            bgCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        // Star animation
+        let stars = [];
+        function drawStars() {
+            stars = [];
+            for (let i = 0; i < 120; i++) {
+                stars.push({
+                    x: Math.random() * bgCanvas.width,
+                    y: Math.random() * bgCanvas.height,
+                    r: Math.random() * 1.5 + 0.5,
+                    alpha: Math.random() * 0.5 + 0.5,
+                    speed: Math.random() * 0.2 + 0.05,
+                    twinkle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        function animateStars() {
+            if (dayMode) return;
+            ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            for (let s of stars) {
+                s.twinkle += 0.02;
+                ctx.globalAlpha = s.alpha * (0.7 + 0.3 * Math.sin(s.twinkle));
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, 2 * Math.PI);
+                ctx.fillStyle = '#fff';
+                ctx.shadowColor = '#fff';
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(animateStars);
+        }
+        // Cherry blossom animation
+        let blossoms = [];
+        function drawBlossoms() {
+            blossoms = [];
+            for (let i = 0; i < 40; i++) {
+                blossoms.push({
+                    x: Math.random() * bgCanvas.width,
+                    y: Math.random() * bgCanvas.height,
+                    r: Math.random() * 8 + 6,
+                    speed: Math.random() * 0.7 + 0.3,
+                    drift: Math.random() * 1.5 - 0.75,
+                    angle: Math.random() * Math.PI * 2
+                });
+            }
+        }
+        function animateBlossoms() {
+            if (!dayMode) return;
+            ctx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+            for (let b of blossoms) {
+                b.y += b.speed;
+                b.x += Math.sin(b.angle) * b.drift;
+                b.angle += 0.01;
+                if (b.y > bgCanvas.height + 10) {
+                    b.y = -10;
+                    b.x = Math.random() * bgCanvas.width;
+                }
+                ctx.save();
+                ctx.translate(b.x, b.y);
+                ctx.rotate(b.angle);
+                ctx.beginPath();
+                for (let i = 0; i < 5; i++) {
+                    ctx.lineTo(0, b.r);
+                    ctx.translate(0, b.r);
+                    ctx.rotate((Math.PI * 2) / 5);
+                }
+                ctx.closePath();
+                ctx.fillStyle = '#ffb6c1';
+                ctx.globalAlpha = 0.7;
+                ctx.shadowColor = '#ffb6c1';
+                ctx.shadowBlur = 8;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1;
+                ctx.restore();
+            }
+            requestAnimationFrame(animateBlossoms);
+        }
+        // Initial draw
+        drawStars();
+        animateStars();
+        // Theme-aware background animation
+        setInterval(() => {
+            if (dayMode) animateBlossoms();
+            else animateStars();
+        }, 1000 / 60);
+        // Sorting visualizer logic (unchanged)
+        let currentArray = [];
+        let isSorting = false;
+        async function generateNewArray() {
+            if (isSorting) return;
+            const response = await fetch('/api/generate', { method: 'POST' });
+            const data = await response.json();
+            currentArray = data.array;
+            visualizeArray(currentArray);
+            document.getElementById('comparisons').textContent = 0;
+            document.getElementById('swaps').textContent = 0;
+            document.getElementById('time').textContent = '0.00s';
+        }
+        async function startSorting(algorithm) {
+            if (isSorting || currentArray.length === 0) return;
+            isSorting = true;
+            const response = await fetch('/api/sort', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ array: currentArray, algorithm: algorithm })
+            });
+            const data = await response.json();
+            const steps = data.steps;
+            const stats = data.stats;
+            document.getElementById('comparisons').textContent = stats.comparisons;
+            document.getElementById('swaps').textContent = stats.swaps;
+            let startTime = Date.now();
+            let timeInterval = setInterval(() => {
+                let elapsed = (Date.now() - startTime) / 1000;
+                document.getElementById('time').textContent = elapsed.toFixed(2) + 's';
+            }, 50);
+            for (let i = 0; i < steps.length; i++) {
+                updateStepLabel(i + 1);
+                if (steps[i].comparing && steps[i].comparing.length > 0) {
+                    compareSound.currentTime = 0;
+                    compareSound.play();
+                }
+                if (steps[i].swapped) {
+                    swapSound.currentTime = 0;
+                    swapSound.play();
+                }
+                // Update stats live if present
+                if (typeof steps[i].comparisons !== 'undefined') {
+                    document.getElementById('comparisons').textContent = steps[i].comparisons;
+                }
+                if (typeof steps[i].swaps !== 'undefined') {
+                    document.getElementById('swaps').textContent = steps[i].swaps;
+                }
+                let delay = Math.max(1, 400 - (speed * 3.99));
+                await new Promise(resolve => setTimeout(resolve, delay));
+                visualizeArray(steps[i].array, steps[i].comparing, steps[i].sorted);
+            }
+            // After sorting, animate turning bars green one by one
+            let lastStep = steps[steps.length - 1];
+            let arrLen = lastStep.array.length;
+            let lastComparing = (lastStep && lastStep.comparing) ? lastStep.comparing : [];
+            let sortedIndices = [];
+            for (let i = 0; i < arrLen; i++) {
+                if (!lastComparing.includes(i)) sortedIndices.push(i);
+            }
+            async function animateFinalGreen() {
+                for (let i = 0; i < sortedIndices.length; i++) {
+                    let currentSorted = sortedIndices.slice(0, i + 1);
+                    visualizeArray(lastStep.array, [], currentSorted);
+                    await new Promise(resolve => setTimeout(resolve, 20));
+                }
+                // Finally, show all as sorted
+                visualizeArray(lastStep.array, [], sortedIndices);
+            }
+            await animateFinalGreen();
+            clearInterval(timeInterval);
+            let totalElapsed = (Date.now() - startTime) / 1000;
+            document.getElementById('time').textContent = totalElapsed.toFixed(2) + 's';
+            isSorting = false;
+        }
+        function visualizeArray(array, comparing = [], sorted = []) {
+            const container = document.getElementById('visualization');
+            container.innerHTML = '';
+            const maxHeight = Math.max(...array);
+            const barWidth = (container.clientWidth - 40) / array.length;
+            array.forEach((value, index) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                if (comparing && comparing.includes(index)) {
+                    bar.classList.add('comparing');
+                }
+                if (sorted && sorted.includes(index)) {
+                    bar.classList.add('sorted');
+                }
+                const height = (value / maxHeight) * (container.clientHeight - 40);
+                bar.style.width = (barWidth - 2) + 'px';
+                bar.style.height = height + 'px';
+                bar.style.left = (index * barWidth + 20) + 'px';
+                container.appendChild(bar);
+            });
+        }
+        // Generate initial array
+        generateNewArray();
+        // Sound effects
+        const swapSound = document.getElementById('swapSound');
+        const compareSound = document.getElementById('compareSound');
+        swapSound.volume = 0.5;
+        compareSound.volume = 0.3;
+        // Speed slider
+        const speedSlider = document.getElementById('speedSlider');
+        let speed = 30;
+        speedSlider.addEventListener('input', function() {
+            speed = parseInt(this.value);
+        });
+        // Update step label
+        function updateStepLabel(step) {
+            document.getElementById('stepLabel').textContent = 'Step: ' + step;
+        }
+        // Track mouse position for petal interaction
+        let mouseX = null, mouseY = null;
+        window.addEventListener('mousemove', function(e) {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        window.addEventListener('mouseleave', function() {
+            mouseX = null;
+            mouseY = null;
+        });
+        // Cherry blossom petal animation for day mode
+        let petalInterval = null;
+        function createPetal() {
+            const petalContainer = document.getElementById('petalContainer');
+            const petal = document.createElement('div');
+            petal.className = 'petal';
+            // SVG petal shape
+            petal.innerHTML = `<svg width="38" height="32" viewBox="0 0 38 32"><path d="M19 3 Q28 14 19 29 Q10 14 19 3 Z" fill="#ffb6c1" stroke="#e573a4" stroke-width="1.2"/></svg>`;
+            petal.style.left = Math.random() * 100 + 'vw';
+            petal.style.top = '-40px';
+            petal.style.transform = `rotate(${Math.random() * 360}deg)`;
+            petalContainer.appendChild(petal);
+            // Animate with wind effect
+            let x = Math.random() * window.innerWidth;
+            let y = -40;
+            let speed = 0.3 + Math.random() * 0.4; // even slower fall
+            let sway = Math.random() * 2.2 + 0.8;
+            let angle = Math.random() * 2 * Math.PI;
+            let vx = 0, vy = speed;
+            function animate() {
+                if (!document.body.classList.contains('day-mode')) { petal.remove(); return; }
+                // Wind effect if mouse is near
+                if (mouseX !== null && mouseY !== null) {
+                    let dx = x - mouseX;
+                    let dy = y - mouseY;
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 80) {
+                        // Push away from cursor
+                        let force = (80 - dist) / 80 * 1.5; // stronger when closer
+                        vx += (dx / dist) * force;
+                        vy += (dy / dist) * force * 0.2;
+                    }
+                }
+                // Natural fall and sway
+                vy += 0.01; // gravity
+                vx += Math.sin(angle) * sway * 0.01;
+                x += vx;
+                y += vy;
+                vx *= 0.96; // friction
+                vy *= 0.98;
+                angle += 0.01 + Math.random() * 0.01;
+                petal.style.top = y + 'px';
+                petal.style.left = x + 'px';
+                petal.style.transform = `rotate(${angle * 40}deg)`;
+                if (y < window.innerHeight + 40) {
+                    requestAnimationFrame(animate);
+                } else {
+                    petal.remove();
+                }
+            }
+            animate();
+        }
+        function startPetalAnimation() {
+            if (petalInterval) return;
+            function spawnPetal() {
+                if (document.body.classList.contains('day-mode')) {
+                    createPetal();
+                }
+                petalInterval = setTimeout(spawnPetal, Math.random() * 150 + 50); // Random interval between 50ms and 200ms
+            }
+            spawnPetal();
+        }
+        function stopPetalAnimation() {
+            clearTimeout(petalInterval);
+            petalInterval = null;
+            const petalContainer = document.getElementById('petalContainer');
+            petalContainer.innerHTML = '';
+        }
+    </script>
+</body>
+</html> 
