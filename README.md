@@ -2,7 +2,6 @@
 # Sortify-v2
 A platform for visualizing sorting algorithms.
 =======
-# Sortify - Space-Themed Sorting Algorithm Visualizer
 
 A beautiful, space-themed visualization tool for understanding sorting algorithms. Watch as different sorting algorithms work their magic on arrays of numbers, with real-time statistics and a stunning space-themed interface.
 
